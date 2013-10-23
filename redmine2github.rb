@@ -21,7 +21,7 @@ opt_parser = OptionParser.new do |opt|
     options[:dry_run] = true
   end
 
-  opt.on("-u", "--user-file USER_FILE", "Specify YAML file with mapping 'Assigned to' to github username") do |user_file|
+  opt.on("-u", "--user-file USER_FILE", "Specify YAML file with mapping 'Assignee' to github username") do |user_file|
     options[:user_file] = user_file
   end
 
@@ -35,6 +35,11 @@ opt_parser = OptionParser.new do |opt|
   
   opt.on("-s", "--skip-ssl-cert") do
     OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
+  end
+
+  options[:closed_status_names] = %w(Resolved Feedback Closed)
+  opt.on("-c STATUS1,STATUS2,STATUS3,...", "--closed-status-names STATUS1,STATUS2,STATUS3,...",Array,"Specify names of closed statuses, default: #{options[:closed_status_names].join(',')} ") do |closed_status_names|
+    options[:closed_status_names] = closed_status_names
   end
 
   opt.on("-v","--verbose", "Turn on verbose output") do
@@ -58,7 +63,7 @@ if ARGV.size <2
   exit
 end
 
-username = ask("Github username") {}
+username = ask("Github username: ") {}
 puts "empty username" and exit if username.empty?
 
 password = ask("Github password: ") { |q| q.echo = '*' }
@@ -66,7 +71,7 @@ puts "empty password" and exit if password.empty?
 
 api_uri = "https://#{username}:#{password}@api.github.com"
 
-puts "Testing user.."
+puts "Authenticating..."
 
 begin
   res = RestClient.get api_uri 
@@ -99,8 +104,9 @@ redmine_issues.each do |row|
   tracker = row['Tracker']
   priority = row['Priority']
   subject = row['Subject']
-  assigned_to = row['Assigned to']
+  assigned_to = row['Assignee'] || row['Assigned to']
   description = row['Description']
+  status = row['Status']
 
   # check for exporting commit
   if options[:redmine]
@@ -134,11 +140,12 @@ redmine_issues.each do |row|
 
   # verbose output
   if options[:verbose]
-    puts "#: #{issue_num}"
+    puts "Issue #: #{issue_num}"
     puts "Tracker: #{tracker}"
     puts "Priority: #{priority}"
     puts "Subject: #{subject}"
-    puts "Assigned To: #{assigned_to}"
+    puts "Assignee: #{assigned_to}"
+    puts "Status: #{status}"
     puts "Description: #{description.strip}"
     puts 
     
@@ -179,7 +186,7 @@ redmine_issues.each do |row|
       created_label.push(label)
     rescue
     end
-  end
+  end unless options[:dry_run]
 
   params = {"title" => subject,
     "body" => description.strip,
@@ -211,8 +218,21 @@ redmine_issues.each do |row|
 
       end
     end
+
+    # close issue if its status is closed
+    if options[:closed_status_names].include? status
+      puts "Closing issue..."
+      update_issue_uri = "#{api_uri}/repos/#{repo_user}/#{repo}/issues/#{github_issue_num}"
+      params = {state: 'closed'}
+      res = RestClient.patch update_issue_uri, params.to_json, :content_type => :json, :accept => :json
+    end
+    
   rescue Exception => e
     puts "Could not connect " + e.message
+    puts e.backtrace.join("\n")
     exit
-  end
+  end unless options[:dry_run]
+
 end
+
+puts "That was a dry run, nothing posted on Github!" if options[:dry_run]

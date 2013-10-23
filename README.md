@@ -28,6 +28,8 @@ Options
     -e API_KEY,REDMINE_URL,          Export comments from redmine. API_KEY must be provided. you can find this key when trying to export issues as atom. its the 'key' parameter in the url
         --export-comment
     -m, --convert-to-markdown        Convert comment to markdown
+    -c STATUS1,STATUS2,...           Specify names of closed statuses, default: Resolved,Feedback,Closed
+        --closed-status-names
     -s, --skip-ssl-cert
     -v, --verbose                    Turn on verbose output
     -h, --help                       help
