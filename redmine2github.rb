@@ -104,7 +104,7 @@ redmine_issues.each do |row|
   tracker = row['Tracker']
   priority = row['Priority']
   subject = row['Subject']
-  assigned_to = row['Assignee']
+  assigned_to = row['Assignee'] || row['Assigned to']
   description = row['Description']
   status = row['Status']
 
