@@ -127,8 +127,12 @@ redmine_issues.each do |row|
      content = entry.at_css("content")
 
      if options[:convert_markdown]
-      r = ReverseMarkdown.new
-      content = r.parse_string(content)        
+       r = ReverseMarkdown.new
+       begin
+         content = r.parse_string(content)
+       rescue
+         content = content.to_s
+       end
      end
 
      comments.push({'name' => name,
