@@ -1,3 +1,5 @@
+# -*- encoding: utf-8 -*-
+
 require "rubygems"
 require "highline/import"
 require "rest-client"
@@ -9,6 +11,7 @@ require "open-uri"
 require "reverse-markdown"
 require "nokogiri"
 require "json"
+require "openssl"
 
 options = {}
 
@@ -32,7 +35,7 @@ opt_parser = OptionParser.new do |opt|
   opt.on("-m", "--convert-to-markdown", "Convert comment to markdown") do
     options[:convert_markdown] = true
   end
-  
+
   opt.on("-s", "--skip-ssl-cert") do
     OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
   end
@@ -45,14 +48,14 @@ opt_parser = OptionParser.new do |opt|
   opt.on("-v","--verbose", "Turn on verbose output") do
     options[:verbose] = true
   end
-  
+
   opt.on("-h", "--help", "help") do
     puts opt_parser
     exit
   end
 
 
-  
+
 end
 
 opt_parser.parse!
@@ -74,7 +77,7 @@ api_uri = "https://#{username}:#{password}@api.github.com"
 puts "Authenticating..."
 
 begin
-  res = RestClient.get api_uri 
+  res = RestClient.get api_uri
 rescue Exception => e
   puts "Could not connect " + e.message
   exit
@@ -84,7 +87,7 @@ repo_user = ARGV[0]
 repo = ARGV[1]
 csv_file = ARGV[2]
 
-if options[:user_file] 
+if options[:user_file]
   users = YAML.load_file(options[:user_file])
 end
 
@@ -92,7 +95,7 @@ created_label = []
 
 redmine_issues = []
 
-CSV.foreach(csv_file, :headers => true) do |row|
+CSV.foreach(csv_file, :headers => true, :encoding => "Shift_JIS:UTF-8") do |row|
   redmine_issues.push(row)
 end
 
@@ -100,21 +103,25 @@ end
 redmine_issues.reverse!
 
 redmine_issues.each do |row|
+  puts '++++++++++++++++++++++++++++++++++++++++++++'
+  p row
+  puts '++++++++++++++++++++++++++++++++++++++++++++'
+
   issue_num = row[0]
-  tracker = row['Tracker']
-  priority = row['Priority']
-  subject = row['Subject']
-  assigned_to = row['Assignee'] || row['Assigned to']
-  description = row['Description']
-  status = row['Status']
+  tracker = row['トラッカー']
+  priority = row['カテゴリ']
+  subject = row['題名']
+  assigned_to = row['担当者'] || row['作成者']
+  description = row['説明']
+  status = row['ステータス']
 
   # check for exporting commit
   if options[:redmine]
    r = options[:redmine]
-   url = "#{r[1]}/issues/show/#{issue_num}?format=atom&key=#{r[0]}"
-   
+   url = "#{r[1]}/issues/#{issue_num}?format=atom&key=#{r[0]}"
+
    comments = []
-  
+
    # parse comment
    doc = Nokogiri::XML(open(url))
    doc.css('entry').each do |entry|
@@ -139,7 +146,11 @@ redmine_issues.each do |row|
        'date' => fdate,
        'content' => content
      })
-   end 
+   end
+  end
+
+  if description.nil?
+    description = ''
   end
 
   # verbose output
@@ -151,14 +162,14 @@ redmine_issues.each do |row|
     puts "Assignee: #{assigned_to}"
     puts "Status: #{status}"
     puts "Description: #{description.strip}"
-    puts 
-    
+    puts
+
     if !comments.empty?
       puts "Comments (#{comments.size})"
       puts
       i=0
       comments.each do |comment|
-        puts "Comment ##{i=i+1}" 
+        puts "Comment ##{i=i+1}"
         puts "author: #{comment['name']}"
         puts "date: #{comment['date']}"
         puts "content: #{comment['content'].strip}"
@@ -217,7 +228,7 @@ redmine_issues.each do |row|
         body = body + "#{comment['content'].strip}"
         params = {"body" => body}
         comment_uri = "#{api_uri}/repos/#{repo_user}/#{repo}/issues/#{github_issue_num}/comments"
-       
+
         res = RestClient.post comment_uri, params.to_json, :content_type => :json
 
       end
@@ -230,8 +241,9 @@ redmine_issues.each do |row|
       params = {state: 'closed'}
       res = RestClient.patch update_issue_uri, params.to_json, :content_type => :json, :accept => :json
     end
-    
+
   rescue Exception => e
+    p e
     puts "Could not connect " + e.message
     puts e.backtrace.join("\n")
     exit
