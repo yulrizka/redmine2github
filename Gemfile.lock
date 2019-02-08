@@ -2,10 +2,10 @@ GEM
   remote: http://rubygems.org/
   specs:
     highline (1.6.14)
-    mime-types (1.19)
-    nokogiri (1.5.5)
-    rest-client (1.6.7)
-      mime-types (>= 1.16)
+    mime-types (1.25.1)
+    nokogiri (1.5.11)
+    rest-client (1.6.9)
+      mime-types (~> 1.16)
     reverse-markdown (0.1.2)
 
 PLATFORMS
@@ -13,6 +13,9 @@ PLATFORMS
 
 DEPENDENCIES
   highline (~> 1.6.14)
-  nokogiri (~> 1.5.5)
-  rest-client (~> 1.6.7)
+  nokogiri (~> 1.5.11)
+  rest-client (~> 1.6.9)
   reverse-markdown (~> 0.1.2)
+
+BUNDLED WITH
+   1.16.1
